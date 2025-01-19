@@ -1,0 +1,4 @@
+mosquitto_sub -h localhost -t trabajo_curso/coord
+mosquitto_pub -h localhost -t trabajo_curso/coord -m 23
+
+C:\Users\pablo\anaconda3\envs\IC\python.exe "C:\Users\pablo\Desktop\Universidad\Cuarto\Internet de las Cosas\P4\P4-Bridge-To-Broker\arduino-to-broker.py"
