@@ -10,7 +10,7 @@ mqtt_broker = "localhost"  # Dirección del broker MQTT
 mqtt_port = 1883
 
 # Tópicos
-topic_temp = "trabajo_curso/coord"
+topic_coord = "trabajo_curso/coord"
 topic_ultrasonic = "trabajo_curso/ultrasonic"
 
 # Crear cliente MQTT
@@ -30,7 +30,7 @@ client.on_message = on_message
 client.connect(mqtt_broker, mqtt_port, 60)
 
 # Suscribirse a los tópicos
-client.subscribe(topic_temp)
+client.subscribe(topic_coord)
 client.subscribe(topic_ultrasonic)
 
 # Loop para manejar MQTT en un hilo separado
