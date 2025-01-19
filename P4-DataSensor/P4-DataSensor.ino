@@ -32,7 +32,7 @@ int open_f = 0;
 typedef struct {
   float latitude;
   float longitude;
-} locationStruct
+} locationStruct;
 
 locationStruct myLocation;
 
