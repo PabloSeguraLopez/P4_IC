@@ -27,7 +27,7 @@
 //variables & constants
 #define TX_LAPSE_MS          5000
 
-int open_f = 0;
+byte open_f = 0;
 
 typedef struct {
   float latitude;
@@ -36,7 +36,6 @@ typedef struct {
 
 locationStruct myLocation;
 
-/*
 //LoRa constant variables
 const uint8_t localAddress = 0x53;     // Dirección de este dispositivo
 uint8_t destination = 0x52;            // Dirección de destino, 0xFF es la dirección de broadcast
@@ -51,9 +50,15 @@ typedef struct {
   uint8_t txPower; 
 } LoRaConfig_t;
 
-LoRaConfig_t initialConf   = { 7, 8, 5, 2};
+double bandwidth_kHz[10] = {7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3,
+                            41.7E3, 62.5E3, 125E3, 250E3, 500E3 };
 
-*/
+LoRaConfig_t thisNodeConf = { 7, 8, 5, 2};
+
+uint16_t msgCount = 0;
+uint16_t last_message = 0;
+
+
 
 //SRF02's constant variables
 #define SRF02_I2C_ADDRESS byte((0xE2)>>1) 
@@ -139,7 +144,7 @@ void GPS_data_read() {
   }
 }
 
-/*
+
 void setUpLoRa(LoRaConfig_t conf){
   LoRa.idle();
   LoRa.setSignalBandwidth(long(bandwidth_kHz[conf.bandwidth_index])); 
@@ -175,7 +180,7 @@ void sendMessage(uint8_t* payload, uint8_t payloadLength, uint16_t msgCount)
   LoRa.endPacket(true);                   // Finalizamos el paquete, pero no esperamos a
                                           // finalice su transmisión
 }
-*/
+
 
 void setup() {
   //serial begin
@@ -192,7 +197,7 @@ void setup() {
   Serial.print(software_revision,HEX); Serial.println(")");
 
   //setup MKR GPS Shield (default I2C mode)
-  /*if (!GPS.begin()) {
+  if (!GPS.begin()) {
     Serial.println("Failed to initialize GPS!");
     while (1);
   }
@@ -216,20 +221,34 @@ void setup() {
   LoRa.onTxDone(TxFinished);
   setUpLoRa(thisNodeConf);
   Serial.println("LoRa init succeeded.\n");
-
-  */
 }
 
 void loop() {
-
-  SRF02_data_read();
-  GPS_data_read();
-
-  /*
-  generatePayload();
-  sendMessage()
-  */
-  delay(TX_LAPSE_MS);
+  if (millis() - last_message > TX_LAPSE_MS) {
+    last_message = millis();
+    // Lectura de los sensores
+    SRF02_data_read();
+    GPS_data_read();
+    // Construcción del payload del mensaje
+    uint8_t payload[50];
+    uint8_t payloadLength = 0;
+    payload[payloadLength] = open_f;
+    // Añadir myLocation.latitude al payload
+    memcpy(payload + payloadLength, &myLocation.latitude, sizeof(myLocation.latitude));
+    payloadLength += sizeof(myLocation.latitude);
+    // Añadir myLocation.longitude al payload
+    memcpy(payload + payloadLength, &myLocation.longitude, sizeof(myLocation.longitude));
+    payloadLength += sizeof(myLocation.longitude);
+    // Envío del mensaje
+    txDoneFlag = false;  
+    sendMessage(payload, payloadLength, msgCount);                  
+    msgCount++;
+    while (!txDoneFlag) {
+      continue;
+    }
+    LoRa.receive();
+    sendMessage();
+  }
 }
 
 
