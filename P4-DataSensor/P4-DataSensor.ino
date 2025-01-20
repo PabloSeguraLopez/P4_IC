@@ -26,6 +26,7 @@
 
 //variables & constants
 #define TX_LAPSE_MS          5000
+#define THRESHOLD            20
 
 byte open_f = 0;
 
@@ -53,7 +54,7 @@ typedef struct {
 double bandwidth_kHz[10] = {7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3,
                             41.7E3, 62.5E3, 125E3, 250E3, 500E3 };
 
-LoRaConfig_t thisNodeConf = { 7, 8, 5, 2};
+LoRaConfig_t thisNodeConf = { 10, 7, 5, 2};
 
 uint16_t msgCount = 0;
 uint16_t last_message = 0;
@@ -107,7 +108,6 @@ byte read_register(byte address,byte the_register)
 } 
 
 void SRF02_data_read() {
-  Serial.print("ranging ...");
   write_command(SRF02_I2C_ADDRESS,REAL_RANGING_MODE_CMS);
   delay(SRF02_RANGING_DELAY);
   
@@ -118,7 +118,7 @@ void SRF02_data_read() {
   
 
   //Alarma (operador ternario)
-  open_f = (int((high_byte_range<<8) | low_byte_range) <= 30) ? 1 : 0;
+  open_f = (int((high_byte_range<<8) | low_byte_range) <= THRESHOLD) ? 1 : 0;
   Serial.print("Puerta abierta?" ); Serial.println(open_f);
 
   /* Método simple
@@ -133,6 +133,7 @@ void SRF02_data_read() {
 
 
 void GPS_data_read() {
+  GPS.wakeup();
   // Check if there is new GPS data available
   if (GPS.available()) {
     // Read GPS data
@@ -144,6 +145,7 @@ void GPS_data_read() {
     // Store GPS data
     myLocation.latitude = latitude;
     myLocation.longitude = longitude;
+    GPS.standby();
   }
 }
 
@@ -182,13 +184,30 @@ void sendMessage(uint8_t* payload, uint8_t payloadLength, uint16_t msgCount)
   LoRa.write(payload, (size_t)payloadLength); // Añadimos el mensaje/payload 
   LoRa.endPacket(true);                   // Finalizamos el paquete, pero no esperamos a
                                           // finalice su transmisión
+
+  
 }
 
+void TxFinished()
+{
+  txDoneFlag = true;
+}
+
+void printBinaryPayload(uint8_t * payload, uint8_t payloadLength)
+{
+  for (int i = 0; i < payloadLength; i++) {
+    Serial.print((payload[i] & 0xF0) >> 4, HEX);
+    Serial.print(payload[i] & 0x0F, HEX);
+    Serial.print(" ");
+  }
+  Serial.println("");
+}
 
 void setup() {
   //serial begin
   Serial.begin(9600);
-  
+  while (!Serial); 
+
   //setup SRF02
   Serial.println("initializing Wire interface ...");
   Wire.begin();
@@ -203,8 +222,17 @@ void setup() {
   if (!GPS.begin()) {
     Serial.println("Failed to initialize GPS!");
     while (1);
+  } else {
+    Serial.println("Initialization of GPS succeded!");
   }
   
+  if (!init_PMIC()) {
+    Serial.println("Initilization of BQ24195L failed!");
+  }
+  else {
+    Serial.println("Initilization of BQ24195L succeeded!");
+  }
+
   //setup LoRa
   if (!LoRa.begin(868E6)) {      // Initicializa LoRa a 868 MHz
     Serial.println("LoRa init failed. Check your connections.");
@@ -234,8 +262,8 @@ void loop() {
     GPS_data_read();
     // Construcción del payload del mensaje
     uint8_t payload[50];
-    uint8_t payloadLength = 0;
-    payload[payloadLength] = open_f;
+    uint8_t payloadLength = 1;
+    payload[0] = open_f;
     // Añadir myLocation.latitude al payload
     memcpy(payload + payloadLength, &myLocation.latitude, sizeof(myLocation.latitude));
     payloadLength += sizeof(myLocation.latitude);
@@ -244,13 +272,12 @@ void loop() {
     payloadLength += sizeof(myLocation.longitude);
     // Envío del mensaje
     txDoneFlag = false;  
-    sendMessage(payload, payloadLength, msgCount);                  
+    sendMessage(payload, payloadLength, msgCount);
+    printBinaryPayload(payload, payloadLength);             
     msgCount++;
     while (!txDoneFlag) {
       continue;
     }
-    LoRa.receive();
-    sendMessage();
   }
 }
 
