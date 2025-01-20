@@ -4,40 +4,73 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 bool oled_flag = true;
 
-/**
- * @brief Actualiza la pantalla OLED con información de los sensores.
- */
-void drawOLED(String hour1, String coord1, String hour2, String coord2){
-  if (oled_flag){
-    display.clearDisplay();
-    drawSensorInformation(hour1,coord1,hour2,coord2);
+int lat1_grados, lat1_minutos, lon1_grados, lon1_minutos;
+int lat2_grados, lat2_minutos, lon2_grados, lon2_minutos;
+String sensor1Time, sensor2Time;
+
+void initDisplay(){
+  if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for (;;); // No continuar si hay fallo
   }
 }
 
 /**
- * @brief Dibuja información de los GNSS y ultrasonidos en la pantalla OLED.
+ * @brief Actualiza la pantalla OLED con información de los sensores.
  */
-void drawSensorInformation(String hour1, String coord1, String hour2, String coord2) {
-  display.setTextSize(1);             // Normal 1:1 pixel scale
-  display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);        // Draw white text
-  display.setCursor(0,0);             // Start at top-left corner
-  // Arduino with ID = 1
-  display.print(F("1:"));
-  display.setTextColor(SSD1306_WHITE);
-  display.print("OPEN:");
-  display.println(hour1);
-  display.print("POS:");
-  display.println(coord1);
-  display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);        // Draw white text
-  // Arduino with ID = 2
-  display.print(F("2:"));
-  display.setTextColor(SSD1306_WHITE);
-  display.print("OPEN:");
-  display.println(hour2);
-  display.print("POS:");
-  display.println(coord2);
+void drawOLED(){
+  if (oled_flag){
+    display.clearDisplay();
 
+    drawSensorsInformation();
+  }
+}
+
+/**
+ * @brief Dibuja información del sensor 1 en la pantalla OLED.
+ */
+void drawSensorsInformation() {
+  display.setTextSize(1);             // Normal 1:1 pixel scale
+  display.setCursor(0,0);
+  display.cp437(true);         // Use full 256 char 'Code Page 437' font
+  display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);        // Draw white text
+  display.println(F("Sensor 1"));
+  display.setTextColor(SSD1306_WHITE);    
+  display.print(F("Open: "));
+  display.println(sensor1Time);
+  display.print(F("  Lat: ")); display.print(lat1_grados); display.print((char)248); display.print(F(" ")); display.print(lat1_minutos); display.println(F("'"));
+  display.print(F("  Lon: ")); display.print(lon1_grados); display.print((char)248); display.print(F(" ")); display.print(lon1_minutos); display.println(F("'"));
+  display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);        // Draw white text
+  display.println(F("Sensor 2"));
+  display.setTextColor(SSD1306_WHITE);    
+  display.print(F("Open: "));
+  display.println(sensor2Time);
+  display.print(F("  Lat: ")); display.print(lat2_grados); display.print((char)248); display.print(F(" ")); display.print(lat2_minutos); display.println(F("'"));
+  display.print(F("  Lon: ")); display.print(lon2_grados); display.print((char)248); display.print(F(" ")); display.print(lon2_minutos); display.println(F("'"));
   display.display();
+}
+
+void setNewOLEDValues(int lat1grados, int lat1minutos, 
+                      int lon1grados, int lon1minutos, 
+                      int lat2grados, int lat2minutos, 
+                      int lon2grados, int lon2minutos, 
+                      String newSensor1Time, String newSensor2Time) {
+    
+  // Solo actualizar si el valor no es -1
+  if (lat1grados != -1) lat1_grados = lat1grados;
+  if (lat1minutos != -1) lat1_minutos = lat1minutos;
+  if (lon1grados != -1) lon1_grados = lon1grados;
+  if (lon1minutos != -1) lon1_minutos = lon1minutos;
+  if (lat2grados != -1) lat2_grados = lat2grados;
+  if (lat2minutos != -1) lat2_minutos = lat2minutos;
+  if (lon2grados != -1) lon2_grados = lon2grados;
+  if (lon2minutos != -1) lon2_minutos = lon2minutos;
+
+  if (newSensor1Time != "") sensor1Time = newSensor1Time;
+  if (newSensor2Time != "") sensor2Time = newSensor2Time;
+
+
+  drawOLED();
 }
 
 void turnOffOLED(){
@@ -48,5 +81,5 @@ void turnOffOLED(){
 
 void turnOnOLED(){
   oled_flag = true;
-  display.clearDisplay();
+  drawOLED();
 }
