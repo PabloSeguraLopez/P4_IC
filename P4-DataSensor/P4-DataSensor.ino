@@ -119,6 +119,7 @@ void SRF02_data_read() {
 
   //Alarma (operador ternario)
   open_f = (int((high_byte_range<<8) | low_byte_range) <= 30) ? 1 : 0;
+  Serial.print("Puerta abierta?" ); Serial.println(open_f);
 
   /* Método simple
   if(int((high_byte_range<<8) | low_byte_range) <= 30){
@@ -137,6 +138,8 @@ void GPS_data_read() {
     // Read GPS data
     float latitude = GPS.latitude();
     float longitude = GPS.longitude();
+    Serial.print("Latitude: "); Serial.println(latitude, 6);
+    Serial.print("Longitude: "); Serial.println(longitude, 6);
   
     // Store GPS data
     myLocation.latitude = latitude;
