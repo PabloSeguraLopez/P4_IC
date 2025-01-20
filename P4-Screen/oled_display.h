@@ -3,6 +3,7 @@
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <RTCZero.h>
 
 // Display constants
 #define SCREEN_WIDTH 128
@@ -14,8 +15,14 @@
 extern Adafruit_SSD1306 display;
 
 // Function declarations
-void drawOLED(String hour1, String coord1, String hour2, String coord2);
-void drawSensorInformation(String hour1, String coord1, String hour2, String coord2);
+void initDisplay();
+void drawOLED();
+void drawSensorsInformation();
+void setNewOLEDValues(int lat1grados = -1, int lat1minutos = -1, 
+                      int lon1grados = -1, int lon1minutos = -1, 
+                      int lat2grados = -1, int lat2minutos = -1, 
+                      int lon2grados = -1, int lon2minutos = -1, 
+                      String newSensor1Time = "", String newSensor2Time = "");
 void turnOnOLED();
 void turnOffOLED();
 
