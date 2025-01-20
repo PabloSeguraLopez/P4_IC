@@ -1,22 +1,168 @@
 #include <SPI.h>             
 #include <LoRa.h>
 #include <Arduino_PMIC.h>
-void setup() {
-  Serial.begin(9600);
+
+#define TX_LAPSE_MS          5000
+#define MESSAGES_LOSS_LIMIT 5
+
+// NOTA: Ajustar estas variables 
+const uint8_t localAddress = 0x52;     // Dirección de este dispositivo
+uint8_t destination = 0x53;            // Dirección de destino, 0xFF es la dirección de broadcast
+
+volatile bool txDoneFlag = true;       // Flag para indicar cuando ha finalizado una transmisión
+
+// Estructura para almacenar la configuración de la radio
+typedef struct {
+  uint8_t bandwidth_index;
+  uint8_t spreadingFactor;
+  uint8_t codingRate;
+  uint8_t txPower; 
+} LoRaConfig_t;
+
+double bandwidth_kHz[10] = {7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3,
+                            41.7E3, 62.5E3, 125E3, 250E3, 500E3 };
+
+LoRaConfig_t thisNodeConf   = { 10, 7, 5, 2};
+
+// --------------------------------------------------------------------
+// Setup function
+// --------------------------------------------------------------------
+void setup() 
+{
+  Serial.begin(115200);  
+  if (!init_PMIC()) {
+    Serial.println("Initilization of BQ24195L failed!");
+  }
+  else {
+    Serial.println("Initilization of BQ24195L succeeded!");
+  }
+
+  if (!LoRa.begin(868E6)) {      // Initicializa LoRa a 868 MHz
+    Serial.println("LoRa init failed. Check your connections.");
+    while (true);                
+  }
+
+  // Configuramos algunos parámetros de la radio
+  LoRa.setSignalBandwidth(long(bandwidth_kHz[thisNodeConf.bandwidth_index])); 
+                                  // 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3
+                                  // 41.7E3, 62.5E3, 125E3, 250E3, 500E3 
+                                  // Multiplicar por dos el ancho de banda
+                                  // supone dividir a la mitad el tiempo de Tx
+                                  
+  LoRa.setSpreadingFactor(thisNodeConf.spreadingFactor);     
+                                  // [6, 12] Aumentar el spreading factor incrementa 
+                                  // de forma significativa el tiempo de Tx
+                                  // SPF = 6 es un valor especial
+                                  // Ver tabla 12 del manual del SEMTECH SX1276
+  
+  LoRa.setCodingRate4(thisNodeConf.codingRate);         
+                                  // [5, 8] 5 da un tiempo de Tx menor
+                                  
+  LoRa.setTxPower(thisNodeConf.txPower, PA_OUTPUT_PA_BOOST_PIN); 
+                                  // Rango [2, 20] en dBm
+                                  // Importante seleccionar un valor bajo para pruebas
+                                  // a corta distancia y evitar saturar al receptor
+  LoRa.setSyncWord(0x12);         // Palabra de sincronización privada por defecto para SX127X 
+                                  // Usaremos la palabra de sincronización para crear diferentes
+                                  // redes privadas por equipos
+  LoRa.setPreambleLength(8);      // Número de símbolos a usar como preámbulo
+
+  
+  // Indicamos el callback para cuando se reciba un paquete
+  LoRa.onReceive(onReceive);
+  
+  // Activamos el callback que nos indicará cuando ha finalizado la 
+  // transmisión de un mensaje
+  LoRa.onTxDone(TxFinished);
+
+  // Nótese que la recepción está activada a partir de este punto
+  LoRa.receive();
+
+  Serial.println("LoRa init succeeded.\n");
 }
 
-void loop() {
-  // Simulación de datos de temperatura y sensor ultrasónico
-  float temperatura = random(20, 30) + random(0, 99) / 100.0; // Genera temperatura simulada
-  int distancia = random(5, 50); // Genera distancia simulada en cm
-
-  // Publicar en el tópico "trabajo_curso/temp"
-  Serial.print("trabajo_curso/temp:");
-  Serial.println(temperatura);
-
-  // Publicar en el tópico "trabajo_curso/ultrasonic"
-  Serial.print("trabajo_curso/ultrasonic:");
-  Serial.println(distancia);
-
-  delay(2000); // Esperar 2 segundos antes de enviar el próximo conjunto de datos
+// --------------------------------------------------------------------
+// Loop function
+// --------------------------------------------------------------------
+void loop() 
+{
+  continue;
 }
+
+
+// --------------------------------------------------------------------
+// Receiving message function
+// --------------------------------------------------------------------
+void onReceive(int packetSize) 
+{
+  if (packetSize == 0) return;          // Si no hay mensajes, retornamos
+
+  // Leemos los primeros bytes del mensaje
+  uint8_t buffer[10];                   // Buffer para almacenar el mensaje
+  int recipient = LoRa.read();          // Dirección del destinatario
+  uint8_t sender = LoRa.read();         // Dirección del remitente
+                                        // msg ID (High Byte first)
+  uint16_t incomingMsgId = ((uint16_t)LoRa.read() << 7) | 
+                            (uint16_t)LoRa.read();
+  
+  uint8_t incomingLength = LoRa.read(); // Longitud en bytes del mensaje
+  
+  uint8_t receivedBytes = 0;            // Leemos el mensaje byte a byte
+  while (LoRa.available() && (receivedBytes < uint8_t(sizeof(buffer)-1))) {            
+    buffer[receivedBytes++] = (char)LoRa.read();
+  }
+  
+  if (incomingLength != receivedBytes) {// Verificamos la longitud del mensaje
+    return;                             
+  }
+
+  // Verificamos si se trata de un mensaje en broadcast o es un mensaje
+  // dirigido específicamente a este dispositivo.
+  // Nótese que este mecanismo es complementario al uso de la misma
+  // SyncWord y solo tiene sentido si hay más de dos receptores activos
+  // compartiendo la misma palabra de sincronización
+  if ((recipient & localAddress) != localAddress ) {
+    return;
+  }
+
+  // Imprimimos los detalles del mensaje recibido
+  Serial.println("Received from: 0x" + String(sender, HEX));
+  Serial.println("Sent to: 0x" + String(recipient, HEX));
+  Serial.println("Message ID: " + String(incomingMsgId));
+  Serial.println("Payload length: " + String(incomingLength));
+  Serial.print("Payload: ");
+  printBinaryPayload(buffer, receivedBytes);
+  Serial.print("\nRSSI: " + String(LoRa.packetRssi()));
+  Serial.print(" dBm\nSNR: " + String(LoRa.packetSnr()));
+  Serial.println(" dB");
+
+  // Actualizamos remoteNodeConf y lo mostramos
+  if (receivedBytes == 4) {
+    remoteNodeConf.bandwidth_index = buffer[0] >> 4;
+    remoteNodeConf.spreadingFactor = 6 + ((buffer[0] & 0x0F) >> 1);
+    remoteNodeConf.codingRate = 5 + (buffer[1] >> 6);
+    remoteNodeConf.txPower = 2 + ((buffer[1] & 0x3F) >> 1);
+    remoteRSSI = -int(buffer[2]) / 2.0f;
+    remoteSNR  =  int(buffer[3]) - 148;
+  
+    Serial.print("Remote config: BW: ");
+    Serial.print(bandwidth_kHz[remoteNodeConf.bandwidth_index]);
+    Serial.print(" kHz, SPF: ");
+    Serial.print(remoteNodeConf.spreadingFactor);
+    Serial.print(", CR: ");
+    Serial.print(remoteNodeConf.codingRate);
+    Serial.print(", TxPwr: ");
+    Serial.print(remoteNodeConf.txPower);
+    Serial.print(" dBm, RSSI: ");
+    Serial.print(remoteRSSI);
+    Serial.print(" dBm, SNR: ");
+    Serial.print(remoteSNR,1);
+    Serial.println(" dB\n");
+  }
+}
+
+void TxFinished()
+{
+  txDoneFlag = true;
+}
+
