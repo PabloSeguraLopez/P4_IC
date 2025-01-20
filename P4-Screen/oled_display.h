@@ -18,10 +18,10 @@ extern Adafruit_SSD1306 display;
 void initDisplay();
 void drawOLED();
 void drawSensorsInformation();
-void setNewOLEDValues(int lat1grados = -1, int lat1minutos = -1, 
-                      int lon1grados = -1, int lon1minutos = -1, 
-                      int lat2grados = -1, int lat2minutos = -1, 
-                      int lon2grados = -1, int lon2minutos = -1, 
+void setNewOLEDValues(String lat1grados = "", String lat1minutos = "", 
+                      String lon1grados = "", String lon1minutos = "", 
+                      String lat2grados = "", String lat2minutos = "", 
+                      String lon2grados = "", String lon2minutos = "", 
                       String newSensor1Time = "", String newSensor2Time = "");
 void turnOnOLED();
 void turnOffOLED();

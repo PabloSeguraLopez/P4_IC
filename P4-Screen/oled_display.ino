@@ -4,8 +4,8 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 bool oled_flag = true;
 
-int lat1_grados, lat1_minutos, lon1_grados, lon1_minutos;
-int lat2_grados, lat2_minutos, lon2_grados, lon2_minutos;
+String lat1_grados, lat1_minutos, lon1_grados, lon1_minutos;
+String lat2_grados, lat2_minutos, lon2_grados, lon2_minutos;
 String sensor1Time, sensor2Time;
 
 void initDisplay(){
@@ -50,21 +50,21 @@ void drawSensorsInformation() {
   display.display();
 }
 
-void setNewOLEDValues(int lat1grados, int lat1minutos, 
-                      int lon1grados, int lon1minutos, 
-                      int lat2grados, int lat2minutos, 
-                      int lon2grados, int lon2minutos, 
+void setNewOLEDValues(String lat1grados, String lat1minutos, 
+                      String lon1grados, String lon1minutos, 
+                      String lat2grados, String lat2minutos, 
+                      String lon2grados, String lon2minutos, 
                       String newSensor1Time, String newSensor2Time) {
     
-  // Solo actualizar si el valor no es -1
-  if (lat1grados != -1) lat1_grados = lat1grados;
-  if (lat1minutos != -1) lat1_minutos = lat1minutos;
-  if (lon1grados != -1) lon1_grados = lon1grados;
-  if (lon1minutos != -1) lon1_minutos = lon1minutos;
-  if (lat2grados != -1) lat2_grados = lat2grados;
-  if (lat2minutos != -1) lat2_minutos = lat2minutos;
-  if (lon2grados != -1) lon2_grados = lon2grados;
-  if (lon2minutos != -1) lon2_minutos = lon2minutos;
+  // Solo actualizar si el valor no es ""
+  if (lat1grados != "") lat1_grados = lat1grados;
+  if (lat1minutos != "") lat1_minutos = lat1minutos;
+  if (lon1grados != "") lon1_grados = lon1grados;
+  if (lon1minutos != "") lon1_minutos = lon1minutos;
+  if (lat2grados != "") lat2_grados = lat2grados;
+  if (lat2minutos != "") lat2_minutos = lat2minutos;
+  if (lon2grados != "") lon2_grados = lon2grados;
+  if (lon2minutos != "") lon2_minutos = lon2minutos;
 
   if (newSensor1Time != "") sensor1Time = newSensor1Time;
   if (newSensor2Time != "") sensor2Time = newSensor2Time;

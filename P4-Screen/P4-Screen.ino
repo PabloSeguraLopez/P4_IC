@@ -8,7 +8,7 @@ String coord2 = "No data";
 
 void setup() {
   Serial.begin(9600);
-  turnOnOLED();
+  initDisplay();
   updateScreen();
 }
 
@@ -45,5 +45,13 @@ void processMessage(String message) {
 }
 
 void updateScreen(){
-  drawOLED(hour1,coord1,hour2,coord2);
+  setNewOLEDValues(coord1.indexOf(",") != -1 ? coord1.substring(0, coord1.indexOf(",")).substring(0,coord1.indexOf("o")) : "--", // Latitud 1 grados
+                   coord1.indexOf(",") != -1 ? coord1.substring(0, coord1.indexOf(",")).substring(coord1.indexOf("o")+1) : "--", // Latitud 1 minutos
+                   coord1.indexOf(",") != -1 ? coord1.substring(coord1.indexOf(",") + 1).substring(0,coord1.indexOf("o")) : "--", // Longitud 1 grados
+                   coord1.indexOf(",") != -1 ? coord1.substring(coord1.indexOf(",") + 1).substring(coord1.indexOf("o")+1) : "--", // Longitud 1 minutos
+                   coord2.indexOf(",") != -1 ? coord2.substring(0, coord2.indexOf(",")).substring(0,coord2.indexOf("o")) : "--", // Latitud 1 grados
+                   coord2.indexOf(",") != -1 ? coord2.substring(0, coord2.indexOf(",")).substring(coord2.indexOf("o")+1) : "--", // Latitud 1 minutos
+                   coord2.indexOf(",") != -1 ? coord2.substring(coord2.indexOf(",") + 1).substring(0,coord2.indexOf("o")) : "--", // Longitud 1 grados
+                   coord2.indexOf(",") != -1 ? coord2.substring(coord2.indexOf(",") + 1).substring(coord2.indexOf("o")+1) : "--", // Longitud 1 minutos
+                   hour1, hour2);
 }
