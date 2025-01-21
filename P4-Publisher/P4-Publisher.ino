@@ -1,11 +1,13 @@
 #include <SPI.h>             
 #include <LoRa.h>
 #include <Arduino_PMIC.h>
+#include <time.h>
+#include <ArduinoLowPower.h>
+
 
 #define TX_LAPSE_MS          5000
 #define MESSAGES_LOSS_LIMIT 5
 
-// NOTA: Ajustar estas variables 
 const uint8_t localAddress = 0x52;     // Dirección de este dispositivo
 uint8_t destination = 0x53;            // Dirección de destino, 0xFF es la dirección de broadcast
 
@@ -24,12 +26,19 @@ double bandwidth_kHz[10] = {7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3,
 
 LoRaConfig_t thisNodeConf   = { 10, 7, 5, 2};
 
+// rtc object to manage the real time clock
+RTCZero rtc;
+
 // --------------------------------------------------------------------
 // Setup function
 // --------------------------------------------------------------------
 void setup() 
 {
-  Serial.begin(115200);  
+  Serial.begin(115200);
+  // Inicializamos el RTC
+  rtc.begin();
+  setDateTime(__DATE__, __TIME__);
+
   if (!init_PMIC()) {
     Serial.println("Initilization of BQ24195L failed!");
   }
@@ -86,7 +95,6 @@ void setup()
 // --------------------------------------------------------------------
 void loop() 
 {
-  continue;
 }
 
 
@@ -128,41 +136,92 @@ void onReceive(int packetSize)
   // Imprimimos los detalles del mensaje recibido
   Serial.println("Received from: 0x" + String(sender, HEX));
   Serial.println("Sent to: 0x" + String(recipient, HEX));
-  Serial.println("Message ID: " + String(incomingMsgId));
-  Serial.println("Payload length: " + String(incomingLength));
-  Serial.print("Payload: ");
-  printBinaryPayload(buffer, receivedBytes);
-  Serial.print("\nRSSI: " + String(LoRa.packetRssi()));
-  Serial.print(" dBm\nSNR: " + String(LoRa.packetSnr()));
-  Serial.println(" dB");
 
   // Actualizamos remoteNodeConf y lo mostramos
-  if (receivedBytes == 4) {
-    remoteNodeConf.bandwidth_index = buffer[0] >> 4;
-    remoteNodeConf.spreadingFactor = 6 + ((buffer[0] & 0x0F) >> 1);
-    remoteNodeConf.codingRate = 5 + (buffer[1] >> 6);
-    remoteNodeConf.txPower = 2 + ((buffer[1] & 0x3F) >> 1);
-    remoteRSSI = -int(buffer[2]) / 2.0f;
-    remoteSNR  =  int(buffer[3]) - 148;
-  
-    Serial.print("Remote config: BW: ");
-    Serial.print(bandwidth_kHz[remoteNodeConf.bandwidth_index]);
-    Serial.print(" kHz, SPF: ");
-    Serial.print(remoteNodeConf.spreadingFactor);
-    Serial.print(", CR: ");
-    Serial.print(remoteNodeConf.codingRate);
-    Serial.print(", TxPwr: ");
-    Serial.print(remoteNodeConf.txPower);
-    Serial.print(" dBm, RSSI: ");
-    Serial.print(remoteRSSI);
-    Serial.print(" dBm, SNR: ");
-    Serial.print(remoteSNR,1);
-    Serial.println(" dB\n");
+  if (receivedBytes == 9) {
+    String id = sender == 0x53 ? "1" : "2";
+    byte open_f = buffer[0];
+    float latitude = 0;
+    memcpy(&latitude, buffer + 1, sizeof(latitude));
+    float longitude = 0;
+    memcpy(&longitude, buffer + 5, sizeof(longitude));
+    publish(latitude, longitude, id, open_f);
   }
 }
 
 void TxFinished()
 {
   txDoneFlag = true;
+}
+
+void publish(float latitude, float longitude, String id, byte open_f)
+{
+  if (open_f > 0){
+    Serial.print("trabajo_curso/ultrasonic~");Serial.print(id);Serial.print("-");Serial.println(getTime());
+  }
+  int lat_degrees = (int)latitude;
+  int lat_minutes = takeMinutes(latitude);
+  int lon_degrees = (int)longitude;
+  int lon_minutes = takeMinutes(longitude);
+  Serial.print("trabajo_curso/coord~");Serial.print(id);Serial.print("-");
+  // Grados de latitud
+  Serial.print(lat_degrees < 10 ? String("0"+String(lat_degrees)) : String(lat_degrees));
+  //Separador
+  Serial.print("o");
+  // Minutos de latitud
+  Serial.print(lat_minutes < 10 ? String("0"+String(lat_minutes)) : String(lat_minutes));
+  //Separador
+  Serial.print(",");
+  //Grados de longitud
+  Serial.print(lon_degrees < 10 ? String("0"+String(lon_degrees)) : String(lon_degrees));
+  //Separador
+  Serial.print("o");
+  // Minutos de longitud
+  Serial.println(lon_minutes < 10 ? String("0"+String(lon_minutes)) : String(lon_minutes));
+}
+
+
+int takeMinutes(float decimalDegrees) {
+  // Calcular los minutos (resto de los grados multiplicado por 60)
+  float fractionalDegrees = decimalDegrees - (float)(int)decimalDegrees;
+  return (int)(fractionalDegrees * 60);
+}
+
+bool setDateTime(const char * date_str, const char * time_str)
+{
+  char month_str[4];
+  char months[12][4] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug",
+                        "Sep", "Oct", "Nov", "Dec"};
+  uint16_t i, mday, month, hour, min, sec, year;
+
+  if (sscanf(date_str, "%3s %hu %hu", month_str, &mday, &year) != 3) return false;
+  if (sscanf(time_str, "%hu:%hu:%hu", &hour, &min, &sec) != 3) return false;
+
+  for (i = 0; i < 12; i++) {
+    if (!strncmp(month_str, months[i], 3)) {
+      month = i + 1;
+      break;
+    }
+  }
+  if (i == 12) return false;
+  
+  rtc.setTime((uint8_t)hour, (uint8_t)min, (uint8_t)sec);
+  rtc.setDate((uint8_t)mday, (uint8_t)month, (uint8_t)(year - 2000));
+  return true;
+}
+
+String getTime()
+{
+  // Obtenemos el tiempo Epoch, segundos desde el 1 de enero de 1970
+  time_t epoch = rtc.getEpoch();
+
+  // Convertimos a la forma habitual de fecha y hora
+  struct tm stm;
+  gmtime_r(&epoch, &stm);
+  
+  // Devolvemos la hora en formato HH:MM:SS
+  char time[8];
+  sprintf(time, "%02d:%02d:%02d", stm.tm_hour, stm.tm_min, stm.tm_sec);
+  return String(time);
 }
 
