@@ -62,7 +62,7 @@ uint16_t last_message = 0;
 
 
 //SRF02's constant variables
-#define SRF02_I2C_ADDRESS byte((0xE2)>>1) 
+#define SRF02_I2C_ADDRESS byte((0xE0)>>1) 
 #define SRF02_I2C_INIT_DELAY 100 // in milliseconds
 #define SRF02_RANGING_DELAY 70 // milliseconds
 
