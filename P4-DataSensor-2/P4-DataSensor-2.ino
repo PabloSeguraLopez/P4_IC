@@ -146,7 +146,6 @@ void GPS_data_read() {
     myLocation.latitude = latitude;
     myLocation.longitude = longitude;
   }
-  GPS.standby();
 }
 
 

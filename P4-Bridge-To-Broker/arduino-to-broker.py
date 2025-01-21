@@ -3,7 +3,7 @@ import paho.mqtt.client as mqtt
 
 # Configuración de los puertos Serial
 arduino_publisher = serial.Serial('COM3', 9600)
-arduino_subscriber = arduino_publisher #serial.Serial('COM5', 9600)
+arduino_subscriber = serial.Serial('COM8', 9600)
 
 # Configuración del cliente MQTT
 mqtt_broker = "localhost"  # Dirección del broker MQTT
