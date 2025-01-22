@@ -18,7 +18,8 @@
 
 //libraries
 #include <Wire.h>
-#include <Arduino_MKRGPS.h>
+#include <SparkFun_u-blox_GNSS_Arduino_Library.h> //http://librarymanager/All#SparkFun_u-blox_GNSS
+SFE_UBLOX_GNSS myGNSS;
 #include <Arduino_PMIC.h>
 #include <LoRa.h>
 #include <SPI.h>
@@ -133,19 +134,17 @@ void SRF02_data_read() {
 
 
 void GPS_data_read() {
-  GPS.wakeup();
   // Check if there is new GPS data available
-  if (GPS.available()) {
-    // Read GPS data
-    float latitude = GPS.latitude();
-    float longitude = GPS.longitude();
-    Serial.print("Latitude: "); Serial.println(latitude, 6);
-    Serial.print("Longitude: "); Serial.println(longitude, 6);
+  // Read GPS data
+  float latitude = myGNSS.getLatitude();
+  float longitude = myGNSS.getLongitude();
+  Serial.print("Latitude: "); Serial.println(latitude, 6);
+  Serial.print("Longitude: "); Serial.println(longitude, 6);
   
-    // Store GPS data
-    myLocation.latitude = latitude;
-    myLocation.longitude = longitude;
-  }
+  // Store GPS data
+  myLocation.latitude = latitude;
+  myLocation.longitude = longitude;
+
 }
 
 
@@ -217,13 +216,14 @@ void setup() {
   Serial.print(SRF02_I2C_ADDRESS,HEX); Serial.print("(0x");
   Serial.print(software_revision,HEX); Serial.println(")");
 
-  //setup MKR GPS Shield (default I2C mode)
-  if (!GPS.begin()) {
-    Serial.println("Failed to initialize GPS!");
+  if (myGNSS.begin() == false) //Connect to the u-blox module using Wire port
+  {
+    Serial.println(F("u-blox GNSS not detected at default I2C address. Please check wiring. Freezing."));
     while (1);
-  } else {
-    Serial.println("Initialization of GPS succeded!");
   }
+
+  myGNSS.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
+  myGNSS.saveConfigSelective(VAL_CFG_SUBSEC_IOPORT); //Save (only) the communications port settings to flash and BBR
   
   if (!init_PMIC()) {
     Serial.println("Initilization of BQ24195L failed!");
