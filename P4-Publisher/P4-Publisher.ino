@@ -145,9 +145,9 @@ void onReceive(int packetSize)
     memcpy(&latitude, buffer + 1, sizeof(latitude));
     long longitude = 0;
     memcpy(&longitude, buffer + 5, sizeof(longitude));
-    latitude = latitude / 10000000;
-    longitude = longitude / 10000000;
-    publish(latitude, longitude, id, open_f);
+    float lati = (float)(latitude / 10000000);
+    float longi = (float)(longitude / 10000000);
+    publish(lati, longi, id, open_f);
   }
 }
 
