@@ -32,8 +32,8 @@ SFE_UBLOX_GNSS myGNSS;
 byte open_f = 0;
 
 typedef struct {
-  float latitude;
-  float longitude;
+  long latitude;
+  long longitude;
 } locationStruct;
 
 locationStruct myLocation;
@@ -136,8 +136,8 @@ void SRF02_data_read() {
 void GPS_data_read() {
   // Check if there is new GPS data available
   // Read GPS data
-  float latitude = myGNSS.getLatitude();
-  float longitude = myGNSS.getLongitude();
+  long latitude = myGNSS.getLatitude();
+  long longitude = myGNSS.getLongitude();
   Serial.print("Latitude: "); Serial.println(latitude, 6);
   Serial.print("Longitude: "); Serial.println(longitude, 6);
   

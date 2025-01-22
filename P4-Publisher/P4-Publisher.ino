@@ -138,13 +138,15 @@ void onReceive(int packetSize)
   Serial.println("Sent to: 0x" + String(recipient, HEX));
 
   // Actualizamos remoteNodeConf y lo mostramos
-  if (receivedBytes == 9) {
+  if (receivedBytes == 17) {
     String id = sender == 0x53 ? "1" : "2";
     byte open_f = buffer[0];
-    float latitude = 0;
+    long latitude = 0;
     memcpy(&latitude, buffer + 1, sizeof(latitude));
-    float longitude = 0;
+    long longitude = 0;
     memcpy(&longitude, buffer + 5, sizeof(longitude));
+    latitude = latitude / 10000000;
+    longitude = longitude / 10000000;
     publish(latitude, longitude, id, open_f);
   }
 }
@@ -154,7 +156,7 @@ void TxFinished()
   txDoneFlag = true;
 }
 
-void publish(float latitude, float longitude, String id, byte open_f)
+void publish(long latitude, long longitude, String id, byte open_f)
 {
   if (open_f > 0){
     Serial.print("trabajo_curso/ultrasonic~");Serial.print(id);Serial.print("-");Serial.println(getTime());
